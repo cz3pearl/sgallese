@@ -1,43 +1,16 @@
 package pHashTest;
 
-abstract class Hash
-	{
-		String filename;
-	}
-	class AudioHash extends Hash 
-	{
-		int[] hash;
-	}
-	class TextHash extends Hash 
-	{
-		String[] hash;
-	}
-	class VideoHash extends Hash 
-	{
-		long[] hash;
-	}
-	class ImageHash extends Hash 
-	{
-		long hash;
-	}
+import java.io.*;
 
-class pHash
+public class pHash
 {
-	class MVPTree
-	{
-		String mvpFile;
-
-		public MVPTree(String filename) { mvpFile = filename; }
-		public native boolean create(Hash[] hashes);
-		public native Hash[] query(Hash hash, float radius, int maxResults);
-		public native boolean add(Hash[] hashes);
-	}
 
 	native static VideoHash videoHash(String file);
 	native static AudioHash audioHash(String file);
-	native static ImageHash imageHash(String file);
+	native static DCTImageHash dctImageHash(String file);
+	native static MHImageHash mhImageHash(String file);
 	native static TextHash textHash(String file);
-	native static int imageDistance(ImageHash hash1, ImageHash hash2);
+	native static double imageDistance(ImageHash hash1, ImageHash hash2);
 	native static double audioDistance(AudioHash hash1, AudioHash hash2);
 	native static double videoDistance(VideoHash hash1, VideoHash hash2, int threshold);
 	native static int textDistance(TextHash txtHash1, TextHash txtHash2);
@@ -48,24 +21,84 @@ class pHash
 		pHashInit();
 	}
 
+	public static MHImageHash[] getMHImageHashes(String d)
+	{
+		File dir = new File(d);
+		MHImageHash[] hashes = null;
+		if(dir.isDirectory())
+		{
+			File[] files = dir.listFiles();
+			hashes = new MHImageHash[files.length];
+			for(int i = 0; i < files.length; ++i)
+			{
+				MHImageHash mh = mhImageHash(files[i].toString());
+				if(mh != null)
+					hashes[i] = mh;
+			}	
 
+		}
+		return hashes;
+
+	}
 	public static void main(String args[])
 	{
+			
 			int i = 0;
-			if(args[i].equals("-a"))
+			if(args[i].equals("-mvp"))
+			{
+					MVPTree mvp = new MVPTree("mvp");
+					MHImageHash[] hashes = getMHImageHashes(args[1]);
+					boolean result = mvp.create(hashes);
+					if(result)
+					{
+						System.out.println("Successfully created MVP tree");									
+						Hash[] results = mvp.query(hashes[0], 100, 20);
+						if(results != null && results.length > 0)
+						{
+						System.out.println("Query found " + results.length + " results");
+						for(int j = 0; j < results.length; ++j)
+							System.out.println("File: " + results[j].filename);
+						}
+
+						MHImageHash[] newHashes = getMHImageHashes(args[2]);
+
+						boolean added = mvp.add(newHashes);
+						if(added)
+						{
+							System.out.println("Hashes added successfully.");
+							Hash[] foundHashes = mvp.query(newHashes[0], 100, 20);
+							if(foundHashes != null && foundHashes.length > 0)
+							{
+								System.out.println("Found newly added hash.");
+							}
+						}
+					}
+				
+			}
+			else if(args[i].equals("-a"))
 			{
 				AudioHash audioHash1 = audioHash(args[1]);
 				AudioHash audioHash2 = audioHash(args[2]);
 				System.out.println("cs = " + audioDistance(audioHash1,audioHash2));
 			}
-			else if(args[i].equals("-i"))
+			else if(args[i].equals("-dct"))
 			{
-				ImageHash imHash = imageHash(args[1]);
-				ImageHash imHash2 = imageHash(args[2]);
+				DCTImageHash imHash = dctImageHash(args[1]);
+				DCTImageHash imHash2 = dctImageHash(args[2]);
 				System.out.println("File 1: " + imHash.filename);
 				System.out.println("File 2: " + imHash2.filename);
 
 				System.out.println(imageDistance(imHash,imHash2));
+			}
+			else if(args[i].equals("-mh"))
+			{
+				MHImageHash imHash = mhImageHash(args[1]);
+				MHImageHash imHash2 = mhImageHash(args[2]);
+				System.out.println("File 1: " + imHash.filename);
+				System.out.println("File 2: " + imHash2.filename);
+
+				System.out.println(imageDistance(imHash,imHash2));
+
 			}
 			else if(args[i].equals("-v"))
 			{
